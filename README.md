@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # JobSpeedy AI Backend API
 
 A comprehensive backend API for JobSpeedy AI - a job portal with AI-powered resume parsing. Built with Node.js, Express, and PostgreSQL, designed for serverless deployment on Vercel.
@@ -442,3 +443,6 @@ ISC
 ## 🤝 Support
 
 For issues and questions, please contact the development team.
+=======
+# Jobs
+>>>>>>> e7a92c8bfb0ce08d566c934f23753657d4e293f3
