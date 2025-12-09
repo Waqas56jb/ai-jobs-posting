@@ -86,7 +86,6 @@ app.post('/api/parse-resume', async (req, res) => {
       console.error('parse-resume error: OPENAI_API_KEY missing or invalid');
       return res.status(500).json({ error: 'OPENAI_API_KEY missing or invalid on server' });
     }
-    console.log('OPENAI_API_KEY present:', !!apiKey, apiKey.slice(0, 8));
 
     const { text = '', filename = 'resume.txt' } = req.body || {};
     if (!text.trim()) {
@@ -167,10 +166,90 @@ Return JSON with only the information found in the text above.`,
     if (!Array.isArray(parsed.experience)) parsed.experience = [];
     if (typeof parsed.education !== 'string') parsed.education = '';
 
+    // Second pass: classification / evaluation (role + match % + matches)
+    let classification = {
+      role: 'Unknown Role',
+      match_percentage: 0,
+      matches: [],
+      summary: 'Not classified',
+    };
+
+    try {
+      const classifyResp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an AI evaluator that classifies a resume and scores its overall strength. Stay conservative and avoid hallucinations.
+
+Rules:
+- Return JSON only.
+- role: concise role name inferred strictly from provided text; if unclear use "Unknown Role".
+- match_percentage: integer 0-100 reflecting overall strength/clarity of resume; be conservative.
+- matches: array of at most 5 key skills/strengths explicitly present; if none, return [].
+- summary: short one-sentence summary; if insufficient info, say "Not classified".
+- Never invent skills or roles not present in the text.`,
+            },
+            {
+              role: 'user',
+              content: `Resume text (truncated to 8k chars):
+${text.substring(0, 8000)}
+
+Parsed skills (verbatim): ${JSON.stringify(parsed.skills)}
+
+Return JSON with: { "role": string, "match_percentage": number, "matches": string[], "summary": string }`,
+            },
+          ],
+          temperature: 0.2,
+          response_format: { type: 'json_object' },
+        }),
+      });
+
+      if (classifyResp.ok) {
+        const classifyData = await classifyResp.json();
+        const classifyContent = classifyData.choices?.[0]?.message?.content || '{}';
+        let parsedClass;
+        try {
+          parsedClass = JSON.parse(classifyContent);
+        } catch {
+          const m = classifyContent.match(/\{[\s\S]*\}/);
+          if (m) parsedClass = JSON.parse(m[0]);
+        }
+        if (parsedClass && typeof parsedClass === 'object') {
+          classification.role =
+            typeof parsedClass.role === 'string' && parsedClass.role.trim()
+              ? parsedClass.role.trim()
+              : classification.role;
+          const pct = Number(parsedClass.match_percentage);
+          if (Number.isFinite(pct) && pct >= 0 && pct <= 100) {
+            classification.match_percentage = Math.round(pct);
+          }
+          if (Array.isArray(parsedClass.matches)) {
+            classification.matches = parsedClass.matches.slice(0, 5).filter((s) => typeof s === 'string');
+          }
+          if (typeof parsedClass.summary === 'string' && parsedClass.summary.trim()) {
+            classification.summary = parsedClass.summary.trim();
+          }
+        }
+      }
+    } catch (classificationError) {
+      console.error('classification error:', classificationError);
+    }
+
     return res.json({
       skills: parsed.skills,
       experience: parsed.experience,
       education: parsed.education,
+      role: classification.role,
+      match_percentage: classification.match_percentage,
+      matches: classification.matches,
+      summary: classification.summary,
     });
   } catch (error) {
     console.error('parse-resume error:', error);
