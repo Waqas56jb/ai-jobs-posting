@@ -82,15 +82,18 @@ const verifyAdmin = async (req, res, next) => {
 // Parse Resume via OpenAI (Public - text only, keeps key server-side)
 app.post('/api/parse-resume', async (req, res) => {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('parse-resume error: OPENAI_API_KEY missing');
+      return res.status(500).json({ error: 'OPENAI_API_KEY missing on server' });
+    }
+    console.log('OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY, process.env.OPENAI_API_KEY?.slice(0, 8));
+
     const { text = '', filename = 'resume.txt' } = req.body || {};
     if (!text.trim()) {
       return res.status(400).json({ error: 'Missing resume text' });
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'OPENAI_API_KEY not set on server' });
-    }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
