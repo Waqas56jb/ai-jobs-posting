@@ -1,0 +1,113 @@
+================================================================================
+COMPLETE API ENDPOINTS LIST - DEPLOYED BACKEND
+Base URL: https://ai-jobs-posting-w5yb.vercel.app
+================================================================================
+
+AUTHENTICATION - ADMIN
+--------------------------------------------------------------------------------
+1. Admin Register
+   POST https://ai-jobs-posting-w5yb.vercel.app/api/admin/register
+   Body: {"email": "admin@test.com", "password": "Admin@123"}
+
+2. Admin Login
+   POST https://ai-jobs-posting-w5yb.vercel.app/api/admin/login
+   Body: {"email": "admin@test.com", "password": "Admin@123"}
+
+AUTHENTICATION - USER
+--------------------------------------------------------------------------------
+3. User Register
+   POST https://ai-jobs-posting-w5yb.vercel.app/api/users/register
+   Body: {"full_name": "John Doe", "email": "john@test.com", "password": "User@123"}
+
+4. User Login
+   POST https://ai-jobs-posting-w5yb.vercel.app/api/users/login
+   Body: {"email": "john@test.com", "password": "User@123"}
+
+5. Get User Profile
+   GET https://ai-jobs-posting-w5yb.vercel.app/api/users/me
+   Headers: Authorization: Bearer USER_TOKEN
+
+JOBS
+--------------------------------------------------------------------------------
+6. Get All Jobs (Public)
+   GET https://ai-jobs-posting-w5yb.vercel.app/api/jobs
+   Query: ?location=Remote&job_type=Full-time&search=developer
+
+7. Get Single Job (Public)
+   GET https://ai-jobs-posting-w5yb.vercel.app/api/jobs/1
+
+8. Create Job (Admin)
+   POST https://ai-jobs-posting-w5yb.vercel.app/api/jobs
+   Headers: Authorization: Bearer ADMIN_TOKEN
+   Body: {"title": "Developer", "company": "Tech Corp", "description": "...", "required_skills": ["JS"], "location": "Remote", "job_type": "Full-time", "category": "Engineering", "language": "English"}
+
+9. Update Job (Admin)
+   PUT https://ai-jobs-posting-w5yb.vercel.app/api/jobs/1
+   Headers: Authorization: Bearer ADMIN_TOKEN
+   Body: {"title": "Updated Title"}
+
+10. Delete Job (Admin)
+    DELETE https://ai-jobs-posting-w5yb.vercel.app/api/jobs/1
+    Headers: Authorization: Bearer ADMIN_TOKEN
+
+APPLICANTS
+--------------------------------------------------------------------------------
+11. Get All Applicants (Admin)
+    GET https://ai-jobs-posting-w5yb.vercel.app/api/applicants
+    Headers: Authorization: Bearer ADMIN_TOKEN
+
+12. Get Single Applicant (Admin)
+    GET https://ai-jobs-posting-w5yb.vercel.app/api/applicants/1
+    Headers: Authorization: Bearer ADMIN_TOKEN
+
+13. Create Applicant (Public)
+    POST https://ai-jobs-posting-w5yb.vercel.app/api/applicants
+    Body (JSON): {"name": "Jane", "email": "jane@test.com", "phone": "+1234567890", "skills": ["JS", "React"], "experience": {"years": 5}, "education": "BS CS"}
+
+APPLICATIONS
+--------------------------------------------------------------------------------
+14. Get All Applications
+    GET https://ai-jobs-posting-w5yb.vercel.app/api/applications
+    Headers: Authorization: Bearer TOKEN
+    (Admin sees all, User sees own)
+
+15. Get Job Applications (Admin)
+    GET https://ai-jobs-posting-w5yb.vercel.app/api/jobs/1/applications
+    Headers: Authorization: Bearer ADMIN_TOKEN
+
+16. Get Single Application
+    GET https://ai-jobs-posting-w5yb.vercel.app/api/applications/1
+    Headers: Authorization: Bearer TOKEN
+
+17. Create Application (User)
+    POST https://ai-jobs-posting-w5yb.vercel.app/api/applications
+    Headers: Authorization: Bearer USER_TOKEN
+    Body: {"job_id": 1, "phone": "+1234567890", "ai_parsed_data": {"skills": ["JS"], "experience_years": 5}}
+
+18. Update Application
+    PUT https://ai-jobs-posting-w5yb.vercel.app/api/applications/1
+    Headers: Authorization: Bearer TOKEN
+    Body: {"phone": "+1111111111"}
+
+19. Delete Application
+    DELETE https://ai-jobs-posting-w5yb.vercel.app/api/applications/1
+    Headers: Authorization: Bearer TOKEN
+
+HEALTH & INFO
+--------------------------------------------------------------------------------
+20. Health Check
+    GET https://ai-jobs-posting-w5yb.vercel.app/api/health
+
+21. Root/API Info
+    GET https://ai-jobs-posting-w5yb.vercel.app/
+
+================================================================================
+TOTAL: 21 API ENDPOINTS
+================================================================================
+
+QUICK TEST IN BROWSER:
+- https://ai-jobs-posting-w5yb.vercel.app/
+- https://ai-jobs-posting-w5yb.vercel.app/api/health
+- https://ai-jobs-posting-w5yb.vercel.app/api/jobs
+
+
