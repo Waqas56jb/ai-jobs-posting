@@ -5,12 +5,14 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 require('dotenv').config();
+// Lazy import to keep CommonJS; avoids ESM import issues on Vercel
+const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Database connection
@@ -76,6 +78,104 @@ const verifyAdmin = async (req, res, next) => {
 // ============================================
 // ADMIN AUTHENTICATION APIs
 // ============================================
+
+// Parse Resume via OpenAI (Public - text only, keeps key server-side)
+app.post('/api/parse-resume', async (req, res) => {
+  try {
+    const { text = '', filename = 'resume.txt' } = req.body || {};
+    if (!text.trim()) {
+      return res.status(400).json({ error: 'Missing resume text' });
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'OPENAI_API_KEY not set on server' });
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a precise resume parser. Extract ONLY information that appears EXACTLY in the provided resume text.
+
+STRICT RULES - VIOLATION RESULTS IN INVALID RESPONSE:
+- ONLY extract skills that appear VERBATIM in the resume text
+- DO NOT add, assume, or infer any skills not explicitly written in the text
+- If no skills are explicitly mentioned, return an empty skills array []
+- Extract work experience ONLY if job titles, companies, and descriptions are clearly stated
+- Extract education ONLY if degrees/institutions are explicitly mentioned
+- DO NOT hallucinate or add any information not present in the text
+
+Return ONLY valid JSON:
+{
+  "skills": ["skill1", "skill2"],
+  "experience": [
+    { "role": "Job Title", "company": "Company Name", "years": 5, "description": "Details" }
+  ],
+  "education": "Degree and Institution details"
+}`,
+          },
+          {
+            role: 'user',
+            content: `Parse this resume text and extract ONLY information explicitly mentioned:
+
+Filename: ${filename}
+
+${text.substring(0, 8000)}
+
+Extract:
+1. Skills explicitly mentioned
+2. Work experience entries clearly described
+3. Education details if mentioned
+
+Return JSON with only the information found in the text above.`,
+          },
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const msg = err?.error?.message || `OpenAI API error: ${response.status}`;
+      return res.status(502).json({ error: msg });
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || '{}';
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch (parseError) {
+      const m = content.match(/\{[\s\S]*\}/);
+      if (!m) {
+        throw new Error('Could not parse OpenAI response');
+      }
+      parsed = JSON.parse(m[0]);
+    }
+
+    if (!Array.isArray(parsed.skills)) parsed.skills = [];
+    if (!Array.isArray(parsed.experience)) parsed.experience = [];
+    if (typeof parsed.education !== 'string') parsed.education = '';
+
+    return res.json({
+      skills: parsed.skills,
+      experience: parsed.experience,
+      education: parsed.education,
+    });
+  } catch (error) {
+    console.error('parse-resume error:', error);
+    return res.status(500).json({ error: error.message || 'Server error' });
+  }
+});
 
 // Admin Register
 app.post('/api/admin/register', async (req, res) => {
