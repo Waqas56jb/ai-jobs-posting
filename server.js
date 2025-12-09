@@ -5,8 +5,6 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const multer = require('multer');
 require('dotenv').config();
-// Lazy import to keep CommonJS; avoids ESM import issues on Vercel
-const fetch = (...args) => import('node-fetch').then(({ default: f }) => f(...args));
 
 const app = express();
 
@@ -82,18 +80,18 @@ const verifyAdmin = async (req, res, next) => {
 // Parse Resume via OpenAI (Public - text only, keeps key server-side)
 app.post('/api/parse-resume', async (req, res) => {
   try {
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('parse-resume error: OPENAI_API_KEY missing');
-      return res.status(500).json({ error: 'OPENAI_API_KEY missing on server' });
+    const apiKeyRaw = process.env.OPENAI_API_KEY;
+    const apiKey = (apiKeyRaw || '').trim();
+    if (!apiKey || apiKey.toLowerCase() === 'undefined') {
+      console.error('parse-resume error: OPENAI_API_KEY missing or invalid');
+      return res.status(500).json({ error: 'OPENAI_API_KEY missing or invalid on server' });
     }
-    console.log('OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY, process.env.OPENAI_API_KEY?.slice(0, 8));
+    console.log('OPENAI_API_KEY present:', !!apiKey, apiKey.slice(0, 8));
 
     const { text = '', filename = 'resume.txt' } = req.body || {};
     if (!text.trim()) {
       return res.status(400).json({ error: 'Missing resume text' });
     }
-
-    const apiKey = process.env.OPENAI_API_KEY;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
